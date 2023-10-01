@@ -109,6 +109,10 @@ def setupAx(ax, fig):
         plt.ylabel('Magnitude (dB)')
         plt.title('Spectrum')
 
+        # Redraw the plot
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+
 # Function to update the plot periodically
 def update_plot():
     global fig, ax
@@ -284,12 +288,13 @@ def start_listening():
 
     # Start the audio stream
     with stream:
-        # plt.ion()  # Turn on interactive mode for plotting
-        # fig, ax = plt.subplots()
-        # plt.show()
-        # root.mainloop()
+        plt.ion()  # Turn on interactive mode for plotting
+        if not ax:
+            fig, ax = plt.subplots()
+        plt.show()
+        root.mainloop()
         # Start updating the plot periodically
-        update_plot()
+        #update_plot()
 
         # Run the main loop for the GUI
         #root.mainloop()
@@ -333,6 +338,26 @@ def getSelectedSpeakerIndex():
     #print(f"selected speaker={selected_index}")
     return selected_index
 
+# Function to stop the audio stream
+def stop_listening():
+    plt.close(fig)
+    root.quit()
+
+
+# Function to handle starting and stopping listening
+listening = False
+
+def toggle_listening():
+    global listening, toggle_button, ax, fig
+    if listening:
+        toggle_button.config(text="Stop Listening")
+        stop_listening()
+        ax=None
+        fx=None
+    else:
+        toggle_button.config(text="Start Listening")
+        start_listening()
+
 # Get a list of available speaker devices
 speaker_devices = get_speaker_devices()
 
@@ -346,8 +371,15 @@ speaker_dropdown['values'] = [f"ID: {i}, Name: {device}" for i, device in speake
 speaker_dropdown.pack(pady=10)
 
 # Button to start listening
-listen_button = tk.Button(root, text="Start Listening", command=start_listening)
-listen_button.pack(pady=10)
+#listen_button = tk.Button(root, text="Start Listening", command=start_listening)
+#listen_button.pack(pady=10)
+# Button to stop listening
+# stop_button = tk.Button(root, text="Stop Listening", command=stop_listening)
+# stop_button.pack(pady=10)
+
+# Button to start/stop listening
+toggle_button = tk.Button(root, text="Start Listening", command=toggle_listening)
+toggle_button.pack(pady=10)
 
 # Button to save audio
 save_button = tk.Button(root, text="Save Audio", command=save_audio_button)
@@ -356,6 +388,7 @@ save_button.pack(pady=10)
 # Button to play saved audio
 play_button = tk.Button(root, text="Play Saved Audio", command=play_audio_button)
 play_button.pack(pady=10)
+
 
 # Update the plot periodically
 root.after(100, update_plot)
