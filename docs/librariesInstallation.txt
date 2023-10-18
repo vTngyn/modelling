@@ -1,0 +1,18 @@
+- install fast whisper (openAI whisper)
+    pip install faster_whisper
+- to install speech_recognition library:
+    pip install SpeechRecognition
+
+- install pyannote
+    pip install pyannote-audio
+
+- when maptplotlib generate an error
+    pip install --upgrade --force-reinstall matplotlib
+
+- install torchvision
+    pip install torchvisionpi
+- to build wheel for pyaudio:
+    (to install homebrew on macos) /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    Install PortAudio using Homebrew:
+        brew install portaudio
+        pip install pyaudio

@@ -2,16 +2,28 @@ import subprocess
 from vtnLibs.common_utils.LogUtils import LogEnabledClass as lec
 from pydub import AudioSegment
 import subprocess
+import ffmpeg
+import re
 
 class AudioFileUtils(lec):
-    FFMPEG_FORMAT_WAV = "wav"
-    FFMPEG_FORMAT_MP3 = "mp3"
-    FFMPEG_FORMAT_AAC = "aac"
-    FFMPEG_FORMAT_FLAC = "flac"
-    FFMPEG_FORMAT_OGG = "ogg"
-    FFMPEG_FORMAT_M4A = "m4a"
-    FFMPEG_FORMAT_WMA = "wma"
-    FFMPEG_FORMAT_AIFF = "aiff"
+    FFMPEG_FORMAT_WAV = ".wav"
+    FFMPEG_FORMAT_MP3 = ".mp3"
+    FFMPEG_FORMAT_AAC = ".aac"
+    FFMPEG_FORMAT_FLAC = ".flac"
+    FFMPEG_FORMAT_OGG = ".ogg"
+    FFMPEG_FORMAT_M4A = ".m4a"
+    FFMPEG_FORMAT_WMA = ".wma"
+    FFMPEG_FORMAT_AIFF = ".aiff"
+    FFMPEG_ALL_FORMAT = [
+        FFMPEG_FORMAT_WAV,
+        FFMPEG_FORMAT_MP3,
+        FFMPEG_FORMAT_AAC,
+        FFMPEG_FORMAT_FLAC,
+        FFMPEG_FORMAT_OGG,
+        FFMPEG_FORMAT_M4A,
+        FFMPEG_FORMAT_WMA,
+        FFMPEG_FORMAT_AIFF,
+    ]
 
     def __init__(self):
         None
@@ -92,3 +104,27 @@ class AudioFileUtils(lec):
             print('Conversion successful!')
         except subprocess.CalledProcessError as e:
             print(f'Error during conversion: {e}')
+
+    @staticmethod
+    def get_audio_length_ffmpeg(audio_file):
+        try:
+            info = ffmpeg.probe(audio_file, show_entries="format")
+            duration = float(info['format']['duration'])
+            return duration
+        except ffmpeg.Error as e:
+            print(f"An error occurred: {e.stderr}")
+
+    @staticmethod
+    def get_audio_length_subprocess(audio_file):
+        try:
+            result = subprocess.run(['ffmpeg', '-i', audio_file], capture_output=True, text=True)
+            output = result.stderr
+            duration_match = re.search(r"Duration: (\d+:\d+:\d+\.\d+)", output)
+            if duration_match:
+                duration = duration_match.group(1)
+                return duration
+            else:
+                print("Duration not found in ffmpeg output.")
+                return None
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred: {e.stderr}")

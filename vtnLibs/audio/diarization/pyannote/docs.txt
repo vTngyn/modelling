@@ -1,0 +1,165 @@
+
+philschmid/pyannote-segmentation
+
+    Voice activity detection :
+
+        from pyannote.audio.pipelines import VoiceActivityDetection
+        pipeline = VoiceActivityDetection(segmentation="pyannote/segmentation")
+        HYPER_PARAMETERS = {
+          # onset/offset activation thresholds
+          "onset": 0.5, "offset": 0.5,
+          # remove speech regions shorter than that many seconds.
+          "min_duration_on": 0.0,
+          # fill non-speech regions shorter than that many seconds.
+          "min_duration_off": 0.0
+        }
+        pipeline.instantiate(HYPER_PARAMETERS)
+        vad = pipeline("audio.wav")
+
+
+    Overlapped speech detection
+
+        from pyannote.audio.pipelines import OverlappedSpeechDetection
+        pipeline = OverlappedSpeechDetection(segmentation="pyannote/segmentation")
+        pipeline.instantiate(HYPER_PARAMETERS)
+        osd = pipeline("audio.wav")
+        # `osd` is a pyannote.core.Annotation instance containing overlapped speech regions
+
+    Resegmentation
+
+        from pyannote.audio.pipelines import Resegmentation
+        pipeline = Resegmentation(segmentation="pyannote/segmentation",
+                                  diarization="baseline")
+        pipeline.instantiate(HYPER_PARAMETERS)
+        resegmented_baseline = pipeline({"audio": "audio.wav", "baseline": baseline})
+        # where `baseline` should be provided as a pyannote.core.Annotation instance
+
+    Raw scores
+
+        from pyannote.audio import Inference
+        inference = Inference("pyannote/segmentation")
+        segmentation = inference("audio.wav")
+        # `segmentation` is a pyannote.core.SlidingWindowFeature
+        # instance containing raw segmentation scores like the
+        # one pictured above (output)
+
+
+
+pyannote/brouhaha : Installation
+
+    This model relies on pyannote.audio and brouhaha-vad.
+
+    pip install pyannote-audio
+    pip install https://github.com/marianne-m/brouhaha-vad/archive/main.zip
+
+    Usage
+
+    # 1. visit hf.co/pyannote/brouhaha and accept user conditions
+    # 2. visit hf.co/settings/tokens to create an access token
+    # 3. instantiate pretrained model
+    from pyannote.audio import Model
+    model = Model.from_pretrained("pyannote/brouhaha",
+                                  use_auth_token="ACCESS_TOKEN_GOES_HERE")
+
+    # apply model
+    from pyannote.audio import Inference
+    inference = Inference(model)
+    output = inference("audio.wav")
+
+    # iterate over each frame
+    for frame, (vad, snr, c50) in output:
+        t = frame.middle
+        print(f"{t:8.3f} vad={100*vad:.0f}% snr={snr:.0f} c50={c50:.0f}")
+
+    #  ...
+    # 12.952 vad=100% snr=51 c50=17
+    # 12.968 vad=100% snr=52 c50=17
+    # 12.985 vad=100% snr=53 c50=17
+    # ...
+
+    Speaker embedding
+
+        Relies on pyannote.audio 2.1: see installation instructions.
+
+        This model is based on the canonical x-vector TDNN-based architecture, but with filter banks replaced with trainable SincNet features. See XVectorSincNet architecture for implementation details.
+        Basic usage
+
+        # 1. visit hf.co/pyannote/embedding and accept user conditions
+        # 2. visit hf.co/settings/tokens to create an access token
+        # 3. instantiate pretrained model
+        from pyannote.audio import Model
+        model = Model.from_pretrained("pyannote/embedding",
+                                      use_auth_token="ACCESS_TOKEN_GOES_HERE")
+
+        from pyannote.audio import Inference
+        inference = Inference(model, window="whole")
+        embedding1 = inference("speaker1.wav")
+        embedding2 = inference("speaker2.wav")
+        # `embeddingX` is (1 x D) numpy array extracted from the file as a whole.
+
+        from scipy.spatial.distance import cdist
+        distance = cdist(embedding1, embedding2, metric="cosine")[0,0]
+        # `distance` is a `float` describing how dissimilar speakers 1 and 2 are.
+
+        Using cosine distance directly, this model reaches 2.8% equal error rate (EER) on VoxCeleb 1 test set.
+        This is without voice activity detection (VAD) nor probabilistic linear discriminant analysis (PLDA). Expect even better results when adding one of those.
+    Advanced usage
+        Running on GPU
+
+            inference = Inference(model, window="whole", device="cuda")
+            embedding = inference("audio.wav")
+
+        Extract embedding from an excerpt
+
+            from pyannote.audio import Inference
+            from pyannote.core import Segment
+            inference = Inference(model, window="whole")
+            excerpt = Segment(13.37, 19.81)
+            embedding = inference.crop("audio.wav", excerpt)
+            # `embedding` is (1 x D) numpy array extracted from the file excerpt.
+
+        Extract embeddings using a sliding window
+
+            from pyannote.audio import Inference
+            inference = Inference(model, window="sliding",
+                                  duration=3.0, step=1.0)
+            embeddings = inference("audio.wav")
+            # `embeddings` is a (N x D) pyannote.core.SlidingWindowFeature
+            # `embeddings[i]` is the embedding of the ith position of the
+            # sliding window, i.e. from [i * step, i * step + duration].
+
+
+pyannote/voice-activity-detection
+
+
+        🎹 Voice activity detection
+
+        Relies on pyannote.audio 2.1: see installation instructions.
+
+        # 1. visit hf.co/pyannote/segmentation and accept user conditions
+        # 2. visit hf.co/settings/tokens to create an access token
+        # 3. instantiate pretrained voice activity detection pipeline
+
+        from pyannote.audio import Pipeline
+        pipeline = Pipeline.from_pretrained("pyannote/voice-activity-detection",
+                                            use_auth_token="ACCESS_TOKEN_GOES_HERE")
+        output = pipeline("audio.wav")
+
+        for speech in output.get_timeline().support():
+            # active speech between speech.start and speech.end
+            ...
+
+
+architecture config file:
+        architecture:
+            name: pyannote.audio.models.PyanNet
+            params:
+                sincnet:
+                    skip: True
+                rnn:
+                    unit: LSTM
+                    hidden_size: 128
+                    num_layers: 2
+                    bidirectional: True
+                ff:
+                    hidden_size: [128, 128]

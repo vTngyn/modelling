@@ -1,0 +1,20 @@
+    Google Web Speech API (recognize_google)
+        Underlying Model: The specifics of the underlying model are not publicly disclosed. It's powered by Google's speech recognition technology.
+
+    Google Cloud Speech API (recognize_google_cloud)
+        Underlying Model: Google Cloud Speech-to-Text API, which uses a variety of deep learning models depending on the input and context. The exact model and its details are managed by Google and may be updated over time.
+
+    Wit.ai (recognize_wit)
+        Underlying Model: Wit.ai is a speech recognition platform owned by Facebook. The details of the specific underlying model are not publicly disclosed.
+
+    Microsoft Bing Voice Recognition (recognize_bing)
+        Underlying Model: The specifics of the underlying model are not publicly disclosed. It's powered by Microsoft's speech recognition technology.
+
+    IBM Speech to Text (recognize_ibm)
+        Underlying Model: It's powered by IBM Watson Speech to Text API, which uses deep learning and other techniques. The specific models and their details are managed by IBM.
+
+    Houndify (recognize_houndify)
+        Underlying Model: Houndify is a speech recognition and natural language understanding platform. The details of the specific underlying model are not publicly disclosed.
+
+    Sphinx (recognize_sphinx)
+        Underlying Model: CMU Sphinx (also known as PocketSphinx), an open-source automatic speech recognition system. It uses statistical models for speech recognition.

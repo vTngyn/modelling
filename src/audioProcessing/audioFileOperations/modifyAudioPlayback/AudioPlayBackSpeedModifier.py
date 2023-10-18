@@ -53,8 +53,13 @@ class AudioPlayBackSpeedModifier(LEC):
         for full_path, relative_path in fileList:
             directory, base_filename, extension = ffU.split_file_path(full_path)
             audioFilename=base_filename+extension
-            self.debug(f" ### {idx:5}   ### processing audio file:{audioFilename} in folder {relative_path}")
-            self.speedup_audio_file(audio_input_folder=directory, audio_input_filename=audioFilename)
+            filesize = ffU.get_file_size(full_path)
+            self.debug(f" ### {idx:5}   ### processing audio file:{audioFilename} [size={filesize['mb']:.2f}MB] in folder {full_path}")
+            try:
+                self.speedup_audio_file(audio_input_folder=directory, audio_input_filename=audioFilename)
+            except Exception as e:
+                self.error(f"An error occured on file {full_path}",exception=e)
+            idx += 1
 
 if __name__ == "__main__":
     None

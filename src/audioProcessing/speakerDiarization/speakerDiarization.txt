@@ -1,0 +1,15 @@
+A Speaker Diarization system consists of the following subsystems :
+
+    Speech Detection: In this step, we use a Voice Activity Detector (VAD) module to separate out speech from non-speech. This is required to trim out silences and non-speech part from your audio recording.
+    Speech Segmentation: In this step, we extract out small segments of your audio call (typically about 1 second long) in a continuous manner. Speech segments typically contain just one speaker.
+    Embedding Extraction: This system creates a neural-network based embedding of your speech segments extracted in the previous step. An embedding is a vector representation of data which could be used by the deep learning framework. We can create embeddings for audio, text, images, documents etc.
+    Clustering: After creating embeddings of the segments, we next need to cluster these embeddings. After clustering, the embeddings of the segments belonging to same speakers are part of one cluster, and assigned the label of the speaker. This step is crucial as it assigns the labels to our embeddings, as well as the number of clusters, which indicates us of the number of speakers in the audio file.
+    Transcription: After clustering, we now have the labels for all the embeddings. Using this, we can now segment out the audio into clips belonging to each speaker, and pass it to a Speech-to-Text model (or ASR) which produces the transcript of the speech segment.
+
+ all the sub-parts of a speaker diarization system :
+
+    Speech Detection : The authors have used the VAD module from pyannote.metrics library. A VAD is basically a neural network trained to distinguish speech signals from non-speech signals. It is used to trim out silences from the audio file.
+    Speech Segmentation: This is achieved by segmenting the audio into windows with overlap. The size of the window determines the size of your segment. Think of it as a magnifier which works on a specific segment of your audio file. So, if your window size is 2 seconds, and you set an overlap of 0.5 seconds, your first window would be : (start = 0.0s , stop = 2.0s), next window will be: (start = 0.5s, stop = 2.5s) … and so on until your full audio is covered.
+    Embedding Extraction: The authors extracted embeddings of each of the audio segments which we found before. First, we find the MFCC (Mel Frequency Cepstral Coefficient) of the audio segment. These are basically feature coefficients which capture the variations in the speech like pitch, quality, intone etc of the voice in a much better way. They are obtained by doing a specialized Fourier Transform of the speech signal. Don’t worry, the SciPy library of python has a separate module for finding MFCCs for us. In the next step, the authors use an LSTM based network which takes in the MFCCs and outputs a vector representation (embedding) which they call a d-vector.
+    Clustering: Clustering is an Unsupervised machine learning method which tries to create clusters (or groups) of your data in an n-dimensional space. There are many clustering algorithms being used by machine learning researchers, most famous among them being K-means.
+

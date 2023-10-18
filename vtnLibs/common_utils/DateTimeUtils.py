@@ -1,6 +1,6 @@
 from datetime import datetime
 import time
-from .LogUtils import LogEnabledClass as LEC
+from vtnLibs.common_utils.LogUtils import LogEnabledClass as LEC
 
 class DateUtils(LEC):
     @staticmethod
@@ -59,3 +59,28 @@ class DateUtils(LEC):
     @staticmethod
     def get_time_for_perf_counter() -> time:
         return time.perf_counter()
+
+    @staticmethod
+    def convert_elapsed_time_to_duration(milliseconds):
+        # Convert milliseconds to seconds
+        seconds = milliseconds / 1000.0
+
+        # Calculate days, hours, minutes, seconds, and milliseconds
+        days = seconds // 86400
+        seconds %= 86400
+        hours = seconds // 3600
+        seconds %= 3600
+        minutes = seconds // 60
+        seconds %= 60
+        milliseconds = seconds * 1000
+
+        # print(f"Elapsed time: {int(days)} days, {int(hours)} hours, {int(minutes)} minutes, {int(seconds)} seconds, {int(milliseconds)} milliseconds")
+        return days, hours, minutes, int(seconds), int(milliseconds)
+
+    @staticmethod
+    def get_elpased_time_message(elapsed_time_ms):
+        days, hours, minutes, seconds, milliseconds = DateUtils.convert_elapsed_time_to_duration(elapsed_time_ms)
+        info_message = f"Elapsed time: #d:{days:3f}:{hours:2f}:{minutes:2f}:{seconds:2f}:{milliseconds:3f}ms"
+        return info_message
+
+

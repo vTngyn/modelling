@@ -1,4 +1,7 @@
-
+"""
+    prerequisite:
+        -- execute : src/audioProcessing/audioFileOperations/audioFormatConversion/AudioFormatConverter.py
+"""
 #speaker diarization demo: https://youtu.be/SY6rHaD-eEc
 
 # instantiate the pipeline
@@ -7,24 +10,30 @@ from pyannote.audio.pipelines.utils.hook import ProgressHook
 import matplotlib.pyplot as plt
 from vtnLibs.audio.diarization.pyannote.diarization import SpeakerDiarization as sd
 from vtnLibs.common_utils.LogUtils import configLogOutput
-
+from vtnLibs.AudioFileUtils import AudioFileUtils
+from vtnLibs.common_utils.FileFolderOperationsUtils import FileFOlderOpsUtils as ffU
 
 # audioFile = "../../out/audio/2023_08_04_16_01_48_us622545Dierick/resampled_audio.wav"
-audio_filename = "2023_06_22_13_40_25.m4a"
-audio_files_folder = "../../../resources/audio"
-audio_filename = "2023_06_22_13_40_25.speedup_1.wav"
-audio_files_folder = "../../../out/audio/speedup"
+# audio_filename = "2023_06_22_13_40_25.m4a"
+src_audio_files_folder = "../../../resources/audio"
+audio_filename = "2023_06_22_13_40_25.wav"
+prep_audio_files_folder = "../../../out/audio/convertedAudio"
 output_folder = "../../../out/audio/diarization"
 
-
+audio_files_folder = prep_audio_files_folder
 
 
 configLogOutput()
 
+include_subdirs=False
+allowed_audio_formats=[AudioFileUtils.FFMPEG_FORMAT_WAV]
+fileList = ffU.parse_folder_with_subfolders(folder_to_parse=src_audio_files_folder, include_subdirs=include_subdirs,
+                                            allowed_extensions=allowed_audio_formats)
 
-sdModule = sd(output_root_folder=output_folder)
-#sdModule.diarize_files_in_folder(main_folder=audio_files_folder)
-sdModule.diarize_audio_file(audio_input_folder=audio_files_folder, audio_input_filename=audio_filename)
+
+sdModule = sd(output_root_folder=output_folder, load_audio_in_memory=True)
+sdModule.diarize_files_in_folder(main_folder=audio_files_folder, allowed_audio_formats=allowed_audio_formats, reprocess_file=True)
+# sdModule.diarize_audio_file(audio_input_folder=audio_files_folder, audio_input_filename=audio_filename, reprocess_file=True)
 
 
 
