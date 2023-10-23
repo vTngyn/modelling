@@ -116,19 +116,33 @@ class AudioFormatConverter(LEC):
             idx += 1
 
 
-if __name__ == "__main__":
-
+def run_audio_conversion_job(project_base_folder_path
+                             ,audio_files_relative_folder_path = "resources/audio"
+                             , audio_filename = None
+                             , output_folder_relative_folder_path = "out/audio/convertedAudio"
+                             ,output_format = AudioFormatConverter.default_output_format
+                             ):
     vtnLibs.common_utils.LogUtils.configLogOutput()
 
-    # output_format = AudioFormatConverter.FFMPEG_FORMAT_WAV
-    output_format = AudioFormatConverter.default_output_format
-
-    audio_filename = "2023_06_22_13_40_25.m4a"
-    audio_files_folder = "../../../../resources/audio"
-    output_folder = "../../../../out/audio/convertedAudio"
-
+    # # output_format = AudioFormatConverter.FFMPEG_FORMAT_WAV
+    # output_format = AudioFormatConverter.default_output_format
+    #
+    # audio_filename = "2023_06_22_13_40_25.m4a"
+    # audio_files_folder = "../../../../resources/audio"
+    # output_folder = "../../../../out/audio/convertedAudio"
+    audio_files_folder=project_base_folder_path+audio_files_relative_folder_path
+    output_folder=project_base_folder_path+output_folder_relative_folder_path
 
     # Convert 'm4a' to 'wav'
-    module = AudioFormatConverter(output_folder)
-    #module.convert_audio_file(audio_files_folder, audio_filename, output_format, quiet_mode=False)
-    module.convert_files_in_folder(main_folder=audio_files_folder, output_format=output_format)
+    try:
+        module = AudioFormatConverter(output_folder)
+        if audio_filename:
+            module.convert_audio_file(audio_files_folder, audio_filename, output_format, quiet_mode=False)
+        else:
+            module.convert_files_in_folder(main_folder=audio_files_folder, output_format=output_format)
+        return None
+    except Exception as e:
+        # return e
+        raise e
+if __name__ == "__main__":
+    pass
