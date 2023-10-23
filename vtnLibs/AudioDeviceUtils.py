@@ -7,7 +7,7 @@ from vtnLibs.UserInteractionUtils import UserInputUtils
 from enum import Enum
 from typing import Tuple
 from vtnLibs.DecoratorAndAnnotation import deprecated_class, deprecated_function
-
+import logging
 
 class AudioUtils(LEC):
 
@@ -28,13 +28,23 @@ class AudioUtils(LEC):
         return sr.Microphone.list_microphone_names()
     @staticmethod
     def __refreshSDDevices__():
-        sd._terminate()
-        sd._initialize()
+        try:
+            print("sd._terminate() called")
+            logging.debug("sd._terminate() called")
+            sd._terminate()
+        except Exception as e:
+            logging.error(e)
+        try:
+            print("sd._initialize() called")
+            logging.debug("sd._initialize() called")
+            sd._initialize()
+        except Exception as e:
+            logging.error(e)
 
     @staticmethod
     def __getDevicesWithSD__():
-        if sd._initialized != 0:
-            AudioUtils.__refreshSDDevices__()
+        # if sd._initialized != 0:
+        AudioUtils.__refreshSDDevices__()
         devices = sd.query_devices()
         print(f"#device={devices}")
         return devices
@@ -289,6 +299,7 @@ class EmbeddedAudioSelector(LEC):
         self.speaker_device_models: list[DeviceLabelModel] = []
         self.output_device_index = None
         self.input_device_index = None
+        AudioUtils.__refreshSDDevices__()
         self.__initialize_audio_devices__()
 
     def find_device_model_from_idx(self, idx: int, device_type:DeviceType):

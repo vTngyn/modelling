@@ -26,7 +26,7 @@ class WhisperModelTranscription(TMON):
     MODEL_COMPUTE_TYPE_INT8 = "int8"
     MODEL_COMPUTE_TYPE_INT8FLOAT16 = "int8_float16"
     MODEL_COMPUTE_TYPE_FLOAT16 = "float16"
-    def __init__(self,output_root_folder,vadFlag = True, min_silence_duration_ms=500, model_size = MODEL_SIZE_LARGEV2, modelDevice = MODEL_DEVICE_CPU, modelComputeType = MODEL_COMPUTE_TYPE_INT8):
+    def __init__(self,output_root_folder,vadFlag = True, min_silence_duration_ms=500, model_size = MODEL_SIZE_LARGEV2, modelDevice = MODEL_DEVICE_CPU, modelComputeType = MODEL_COMPUTE_TYPE_INT8,num_workers=1, cpu_threads=0):
         self.model = None
         self.vadFlag = vadFlag
         self.min_silence_duration_ms=min_silence_duration_ms
@@ -34,6 +34,8 @@ class WhisperModelTranscription(TMON):
         self.model_size = model_size
         self.modelDevice = modelDevice
         self.modelComputeType = modelComputeType
+        self.num_workers=num_workers
+        self.cpu_threads=cpu_threads
 
 
         self.audio_base_file_name = None
@@ -146,7 +148,7 @@ class WhisperModelTranscription(TMON):
         #model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
         # or run on CPU with INT8
         #model = WhisperModel(model_size, device="cpu", compute_type="int8")
-        self.model = WhisperModel(self.model_size, device=self.modelDevice, compute_type=self.modelComputeType)
+        self.model = WhisperModel(self.model_size, device=self.modelDevice, compute_type=self.modelComputeType, num_workers=self.num_workers)
 
         #to forces the model to predict in English under the task of speech recognition:
         #model.config.forced_decoder_ids = WhisperProcessor.get_decoder_prompt_ids(language="english", task="transcribe")
