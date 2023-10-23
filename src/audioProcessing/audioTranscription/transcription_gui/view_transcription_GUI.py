@@ -6,10 +6,13 @@ import re
 from threading import Thread
 from play_segment_GUI import AudioSegmentPlayerGUI
 from select_audio_device_GUI import AudioSelectionGUI
-from common_classes import SegmentData
+from common_classes import SegmentData, SpeechSpeaker
 from vtnLibs.common_utils.LogUtils import LogEnabledClass as LEC
+from vtnLibs.common_utils.FileFolderOperationsUtils import FileFOlderOpsUtils as ffU
 from vtnLibs.AudioDeviceUtils import EmbeddedAudioSelector
 import time
+from typing import List, Protocol
+
 """
 from tkinter import messagebox
 import sounddevice as sd  # Import sounddevice for audio device management
@@ -18,10 +21,14 @@ import pprint
 """
 
 
+
 class ViewTranscriptionApp(LEC):
-    def __init__(self, default_folder=None, header_lines_number=4):
+    def __init__(self, default_folder=None, header_lines_number=4, diarization_folder=None):
         self.audio_file_path = None
+        self.diarization_file_path = None
+        self.diariz_file_lines = None
         self.header_lines_number=header_lines_number
+        self.inital_diarization_folder=diarization_folder
 
         self.audio_selector = EmbeddedAudioSelector()
 
@@ -80,8 +87,16 @@ class ViewTranscriptionApp(LEC):
         self.audio_file_label.pack(padx=20, pady=10)
 
         # Button to select a directory
-        self.select_directory_button = tk.Button(self.root, text="Select Directory", command=self.select_directory)
+        self.select_directory_button = tk.Button(self.root, text="Select Directory", command=self.selected_transcription_directory)
         self.select_directory_button.pack(pady=10)
+
+        # self.audio_file_label = tk.Label(self.root, text=self.audio_file_path or '')
+        self.diariz_file_label = tk.Entry(self.root, text=self.diarization_file_path or '')
+        self.diariz_file_label.pack(padx=20, pady=10)
+
+        # Button to select a directory
+        self.select_diariz_directory_button = tk.Button(self.root, text="Select Directory", command=self.selected_diariz_file)
+        self.select_diariz_directory_button.pack(pady=10)
 
         # Button to select a directory
         self.select_audio_button = tk.Button(self.root, text="Select audio device", command=self.show_select_audio_device_gui)
@@ -152,12 +167,18 @@ class ViewTranscriptionApp(LEC):
         new_height = event.height
         self.window_size_label.config(text=f"Window size: {new_width}x{new_height}")
 
-    def select_directory(self):
+    def selected_transcription_directory(self):
         # Prompt user to select a directory
         self.directory_path = filedialog.askdirectory(title="Select directory", initialdir=self.directory_path)
 
         if self.directory_path:
             self.populate_file_dropdown()
+
+    def selected_diariz_file(self):
+        # Prompt user to select a directory
+        self.diarization_file_path = filedialog.askopenfile(title="Select diarization RTTM file", initialdir=self.inital_diarization_folder, filetypes=["rttm"])
+        self.diariz_file_lines = None
+        self.load_text_file()
 
     def populate_file_dropdown(self):
         self.file_dropdown['values'] = None
@@ -167,7 +188,7 @@ class ViewTranscriptionApp(LEC):
             self.file_dropdown['values'] = tuple(sorted(tuple(os.path.join(self.directory_path, file) for file in text_files)))
         else:
             self.directory_path=None
-            self.select_directory()
+            self.selected_transcription_directory()
 
     def load_text_file(self, event):
         selected_file = self.file_dropdown.get()
@@ -178,6 +199,7 @@ class ViewTranscriptionApp(LEC):
 
             self.display_text_content()
             self.notify_audio_file_found()
+            self.notify_diariz_file_found()
 
     def update_scrollbar(self, *args):
         print(args)
@@ -188,6 +210,21 @@ class ViewTranscriptionApp(LEC):
 
     def scroll_right(self, event):
         self.canvas.xview_scroll(1, "units")
+
+    def __get__diarization_file_path_from_audio_file_path__(self):
+        audFolder=self.inital_diarization_folder
+        aud_path, aud_basename, aud_ext = ffU.split_file_path(self.audio_file_path)
+        diariz_filename = f"spk_diarization_{aud_basename}.rttm"
+        if not self.diarization_file_path:
+            if audFolder:
+                self.diarization_file_path = audFolder + diariz_filename
+                if not ffU.is_existing_file(self.diarization_file_path):
+                    self.diarization_file_path = None
+        if not self.diarization_file_path:
+            audFolder=aud_path
+        self.diarization_file_path = audFolder + diariz_filename
+        if not ffU.is_existing_file(self.diarization_file_path):
+            self.diarization_file_path = None
 
     def display_text_content(self):
         audio_file_not_found = True
@@ -208,14 +245,18 @@ class ViewTranscriptionApp(LEC):
             for i, line in enumerate(lines):
                 if (i >= self.header_lines_number):
                     if line and len(line)>0:
-                        segData = SegmentData(self.audio_file_path)
-                        segData.initialize_from_transcription_line(line)
+                        segData, last_diarization_idx_line = (self.audio_file_path)
+                        self.selected_segment_info, last_diarization_idx_line = self.get_segmentdata_from_transcrip_line(
+                            audio_file_path=self.audio_file_path,
+                            transcription_line=line, find_speakers_in_diariz_file=True, last_diarization_idx_line=last_diarization_idx_line)
+
                         print(segData.to_string())
                         self.insert_textarea_line(i, segData.pretty_transcription_line())
                 else:
                     if audio_file_not_found:
                         if (self.extract_audio_file_info(line)):
                             audio_file_not_found = False
+                            self.__get__diarization_file_path_from_audio_file_path__()
 
     def insert_textarea_line(self, line_num, line):
         tag_name = f"line{line_num}"
@@ -265,12 +306,22 @@ class ViewTranscriptionApp(LEC):
         self.prev_line = tag
         self.selected_line_idx, self.selected_transcription_line_content = self.parse_selected_line(tag)
 
+    def get_segmentdata_from_transcrip_line(self, audio_file_path, transcription_line, find_speakers_in_diariz_file = False, last_diarization_idx_line=None) -> tuple[SegmentData, int]:
+        segData = SegmentData(audio_file_path)
+        segData.initialize_from_transcription_line(transcription_line)
+        new_diarization_idx_line=None
+        if find_speakers_in_diariz_file:
+            speakers:List[SpeechSpeaker] = None
+            speakers,  new_diarization_idx_line = self.find_speakers_in_diarizationRTTM(segData=segData, last_diarization_idx_line=last_diarization_idx_line)
+            segData.add_speakers(speakers=speakers)
+        return segData, new_diarization_idx_line
+
     def on_line_double_click(self, tag):
         print("on_line_double_click")
         self.on_line_click(tag)
 
-        self.selected_segment_info = SegmentData(self.audio_file_path)
-        self.selected_segment_info.initialize_from_transcription_line(self.selected_transcription_line_content)
+        self.selected_segment_info, last_diarization_idx_line = self.get_segmentdata_from_transcrip_line(audio_file_path=self.audio_file_path, transcription_line=self.selected_transcription_line_content)
+
 
         # start_timestamp, end_timestamp, transcription_text = self.parse_transcription_line(self.selected_transcription_line_content)
         # self.selected_segment_info = SegmentData(audio_file=self.audio_file_path, start_timestamp=start_timestamp, end_timestamp=end_timestamp, text=transcription_text)
@@ -390,6 +441,14 @@ class ViewTranscriptionApp(LEC):
         # else:
         #     self.__show_popup_window__("Extracted audio file path", "audio file info NOT FOUND!!", self.on_popup_close)
 
+    def notify_diariz_file_found(self):
+        self.diariz_file_label.config(text=self.diarization_file_path or "")
+        self.diariz_file_label.insert(tk.END, self.diarization_file_path or "")
+        # if self.audio_file_path:
+        #     self.__show_popup_window__("Extracted audio file path", self.audio_file_path, self.on_popup_close)
+        # else:
+        #     self.__show_popup_window__("Extracted audio file path", "audio file info NOT FOUND!!", self.on_popup_close)
+
     def on_popup_close(self):
         # print("on_popup_close")
         self.popup_window.destroy()
@@ -440,3 +499,55 @@ class ViewTranscriptionApp(LEC):
             return True
         return False
 
+    def find_speakers_in_diarizationRTTM(self, segData: SegmentData, last_diarization_idx_line=None) -> int:
+
+        if not self.diariz_file_lines:
+
+            # Read content from the second file
+            with open(self.diarization_file_path, 'r') as diariz_file:
+                diariz_file_lines = diariz_file.readlines()
+
+        # Create an output file to store the results
+        # output_file = open('output.txt', 'w')
+        start_idx=0
+        if last_diarization_idx_line and last_diarization_idx_line<len(self.diariz_file_lines):
+            x_lines_before_last_idx = last_diarization_idx_line - 3
+            if (x_lines_before_last_idx > 0):
+                start_idx = x_lines_before_last_idx
+            else:
+                start_idx=last_diarization_idx_line
+
+
+        # Extract timestamps and corresponding "SPEAKER_{XX}" strings from diariz file
+        timestamps_and_speakers = []
+        speakers=[]
+        i=start_idx
+        for line in self.diariz_file_lines[start_idx:]:
+            found_match = False
+            match = re.search(r'SPEAKER\swaveform\s1\s([0-9]{1,}\.[0-9]{1,})\s([0-9]{1,}\.[0-9]{1,})\s<NA>\s<NA>\s(SPEAKER_)(\d+)\s', line)
+            if match:
+                diariz_start_time, param2, speaker, speaker_idx = match.groups()
+                timestamps_and_speakers.append((float(diariz_start_time), float(param2), speaker, speaker_idx))
+                if segData.end_timestamp >= diariz_start_time:
+                    # Check if start_time2 falls within the range of the current line in file1
+                    if segData.start_timestamp <= diariz_start_time :
+                    #     output_file.write(f"Line in file1: [{diariz_start_time}s -> {param2}s] {speaker}\n")
+                    #     output_file.write(f"Matching line in file2: {line2}\n")
+                    #     output_file.write('\n')  # Add a separator between matches
+                        speakers.append(SpeechSpeaker(first_name=speaker_idx, last_name=speaker))
+                        self.debug(f"speaker found:[{diariz_start_time}s in {segData.start_timestamp}s -> {segData.end_timestamp}\n")
+
+                        found_match = True
+                    else:
+                        if found_match:
+                            break  # Move to the next line in file1
+            i += 1
+
+        last_processed_line_index = i
+        return speakers, last_processed_line_index
+
+        # Close the output file
+        # output_file.close()
+
+        # Close the input files
+        # diariz_file.close()
