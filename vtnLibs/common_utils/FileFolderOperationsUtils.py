@@ -1,6 +1,8 @@
+import inspect
 import os
 from vtnLibs.common_utils.LogUtils import LogEnabledClass as lec
 from typing import List
+import pprint
 
 class FileFOlderOpsUtils(lec):
     FOLDER_EXIST = "exists"
@@ -185,5 +187,77 @@ class FileFOlderOpsUtils(lec):
             return abs_path
         else:
             return None
+
+    @staticmethod
+    def get_relative_file_path_from_script_folder(file_path_from_root: str, script_folder_deep: int) -> str:
+        p = str()
+        for i in range(script_folder_deep):
+            p += "../"
+        return p + file_path_from_root
+
+    @staticmethod
+    def get_current_location_path():
+        # Get the frame object for the current function
+        current_frame = inspect.currentframe()
+
+        # Get the filename (path) of the current frame
+        current_file = inspect.getframeinfo(current_frame).filename
+
+        # Convert to an absolute path
+        absolute_path = os.path.abspath(current_file)
+
+        return absolute_path
+
+    @staticmethod
+    def get_caller_file_location(base_fct_name=None, level=1):
+        # Get the frame of the calling function
+        stack = inspect.stack()
+        if base_fct_name:
+            # print(f"looking into stack levels from 0 to {len(stack)}")
+            next_is_correct = False
+            for level in range(len(stack)):
+                # print(f"\tlevel={level}")
+                caller_frame = inspect.stack()[level]
+                # doc:  j=3 => function name
+                #       j=1 => file in which the function is located
+
+                # for j in range(len(caller_frame)):
+                #     print(f"\tj={j}")
+                #     print (caller_frame[j])
+
+                if caller_frame[3] == base_fct_name:
+                    next_is_correct = True
+                    base_caller_frame = inspect.stack()[level + 1]
+                    return (base_caller_frame[1], base_caller_frame[3])
+
+        else:
+            idx_caller_frame = inspect.stack()[level]
+            return (idx_caller_frame[1], idx_caller_frame[3])
+
+    @staticmethod
+    def get_caller_location_elements():
+        cur_fct_frame =  inspect.currentframe()
+        cur_fct_name = cur_fct_frame.f_code.co_name
+        # print(cur_fct_name.f_back)
+        # print(cur_fct_name.f_back.f_code)
+        # print(cur_fct_name.f_back.f_code.co_name)
+        #path = FileFOlderOpsUtils.get_caller_file_location(level=2)
+        path, fct_name = FileFOlderOpsUtils.get_caller_file_location(base_fct_name=cur_fct_name)
+        return FileFOlderOpsUtils.split_file_path(file_path=path, remove_leading_dot=True)
+
+    @staticmethod
+    def get_this_location_path_elements():
+        path = FileFOlderOpsUtils.get_current_location_path()
+        print(path)
+        return FileFOlderOpsUtils.split_file_path(file_path=path, remove_leading_dot=True)
+
+
 if __name__ == "__main__":
     None
+    # Call the function to get the absolute path of the current file
+    current_file_path = FileFOlderOpsUtils.get_current_location_path()
+    print("Absolute path of the current file:", current_file_path)
+    p, bn, ext = FileFOlderOpsUtils.get_this_location_path_elements()
+    print(f'path={p}')
+    print(f'base name={bn}')
+    print(f'ext={ext}')
