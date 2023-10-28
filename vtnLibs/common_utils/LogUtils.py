@@ -6,6 +6,7 @@ from vtnLibs.DecoratorAndAnnotation import *
 import pprint
 import io
 from typing import Callable, Tuple, List
+from types import TracebackType
 class LogEnabledMetaParentClass(type):
     logger = None
     def __new__(mcls, name, bases, attrs):
@@ -54,7 +55,7 @@ class LogEnabledClass(metaclass=LogEnabledMetaParentClass):
                 else:
                     cls.error(f"{exception.stderr}")
     @classmethod
-    def get_info_from_sysinfo(self, message:str="") -> Tuple[str, Exception, traceback, str, str]:
+    def get_info_from_sysinfo(self, message:str="") -> Tuple[str, Exception, TracebackType, str, str]:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         exception_message = str(exc_value)
         exception_docstring = exc_type.__doc__
@@ -67,7 +68,7 @@ class LogEnabledClass(metaclass=LogEnabledMetaParentClass):
         return exc_type, exc_value, exc_traceback,exception_message, exception_docstring
 
     @classmethod
-    def get_info_from_exception(cls, exception: Exception) -> Tuple[str, Exception, traceback, str, str]:
+    def get_info_from_exception(cls, exception: Exception) -> Tuple[str, Exception, TracebackType, str, str]:
         exc_type = type(exception)  # Equivalent to exc_type
         exc_value = exception  # Equivalent to exc_value
 
