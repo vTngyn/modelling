@@ -1,9 +1,11 @@
 import logging
+import sys
 import traceback
 from vtnLibs.DecoratorAndAnnotation import *
 # from vtnLibs.common_utils.DateTimeUtils import DateUtils as dtU
 import pprint
-
+import io
+from typing import Callable, Tuple, List
 class LogEnabledMetaParentClass(type):
     logger = None
     def __new__(mcls, name, bases, attrs):
@@ -39,7 +41,7 @@ class LogEnabledClass(metaclass=LogEnabledMetaParentClass):
     #     cls.logger.debug(m.format(**kwargs))
 
     @classmethod
-    def __genLog__(cls, logMethod, message=None, exception=None, appendTrace= False, **kwargs):
+    def __genLog__(cls, logMethod: Callable, message: str=None, exception:Exception=None, appendTrace:bool= False, **kwargs):
         # print(f"__genLog__ {message}")
         # cls.__initLog__()
         if (message):
@@ -51,47 +53,105 @@ class LogEnabledClass(metaclass=LogEnabledMetaParentClass):
                     logMethod(f"{exception.stderr}")
                 else:
                     cls.error(f"{exception.stderr}")
+    @classmethod
+    def get_info_from_sysinfo(self, message:str="") -> Tuple[str, Exception, traceback, str, str]:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        exception_message = str(exc_value)
+        exception_docstring = exc_type.__doc__
+
+        if exc_type is not None:
+            exception_info = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+            logging.error(f"{message}\n{exception_info}")
+        else:
+            logging.error(message)
+        return exc_type, exc_value, exc_traceback,exception_message, exception_docstring
 
     @classmethod
-    def __addStackTrace__(cls, logMethod=None, exception=None):
+    def get_info_from_exception(cls, exception: Exception) -> Tuple[str, Exception, traceback, str, str]:
+        exc_type = type(exception)  # Equivalent to exc_type
+        exc_value = exception  # Equivalent to exc_value
+
+        exception_args = exception.args
+        exception_message = exception_args[0] if exception_args else None
+        exception_docstring = exc_type.__doc__
+
+        # You can access the captured traceback as a string
+
+        exc_traceback = exception.__traceback__
+        return exc_type, exc_value, exc_traceback, exception_message, exception_docstring
+
+    def traceback_to_str(self, traceback:traceback=None):
+        if traceback:
+            exception_traceback = io.StringIO()
+            traceback.print_tb(traceback, file=exception_traceback)
+            exc_traceback = exception_traceback.getvalue()
+            return exc_traceback
+        return None
+
+    def parse_traceback_to_str(self, traceback: traceback):
+        if traceback:
+            s = ""
+            while exc_traceback:
+                s += f"[[Function: {exc_traceback.tb_frame.f_code.co_name}]"
+                s += (f", [Line: {exc_traceback.tb_lineno}]")
+                s += (f", [File: {exc_traceback.tb_frame.f_code.co_filename}]]")
+                exc_traceback = exc_traceback.tb_next
+            return s
+        return None
+    @classmethod
+    def __addStackTrace__(cls, logMethod:Callable=None, exception:Exception=None):
+        callable = logMethod
         if logMethod:
-            # print("__addStackTrace__")
-            s = cls .__getStackTrace__(exception)
-            # for l in s:
-            #     logMethod(l.strip() + "\n")
+            callable = logMethod
+        else:
+            callable=logging.error
+        # print("__addStackTrace__")
+        s = cls .__getStackTrace__(exception)  #this function should return List[str]
+        # for l in s:
+        #     logMethod(l.strip() + "\n")
+        if isinstance(s, list):
+            for l in s:
+                logMethod(l)
+        else:
+            # assuming that s is a string
             logMethod(s)
 
     @classmethod
-    def __getStackTrace__(cls, exception=None):
+    def __getStackTrace__(cls, exception:Exception=None) -> List[str]:
         # print("__getStackTrace__")
         if exception:
-            stack_trace = traceback.format_exc()
-        else:
             stack_trace = traceback.format_tb(exception.__traceback__)
+        else:
+            exc_type, exc_value, exc_traceback, exception_message, exception_docstring = cls.get_info_from_sysinfo()
+            if exc_type:
+                # try to get stacktrace from the context (inside a except block)
+                stack_trace = traceback.format_tb(exc_traceback)
+            else:
+                stack_trace = [traceback.format_exc()]
         return stack_trace
 
     @classmethod
-    def debug(cls, message, exception=None, appendTrace= False, **kwargs):
+    def debug(cls, message:str, exception:Exception=None, appendTrace:bool= False, **kwargs):
         # print("debug called")
         cls.__genLog__(logMethod=cls.logger.debug, message=message, exception=exception, appendTrace= appendTrace, **kwargs)
     @classmethod
-    def info(cls, message, exception=None, appendTrace= False, **kwargs):
+    def info(cls, message:str, exception:Exception=None, appendTrace:bool= False, **kwargs):
         cls.__genLog__(logMethod=cls.logger.info, message=message, exception=exception, appendTrace= appendTrace, **kwargs)
 
     @classmethod
-    def warning(cls, message, exception=None, appendTrace= False, **kwargs):
+    def warning(cls, message:str, exception:Exception=None, appendTrace:bool= False, **kwargs):
         cls.__genLog__(logMethod=cls.logger.warning, message=message, exception=exception, appendTrace= appendTrace, **kwargs)
 
     @classmethod
-    def error(cls, message, exception=None, appendTrace= False, **kwargs):
+    def error(cls, message:str, exception:Exception=None, appendTrace:bool= False, **kwargs):
         cls.__genLog__(logMethod=cls.logger.error, message=message, exception=exception, appendTrace= appendTrace, **kwargs)
 
     @classmethod
-    def critical(cls, message, exception=None, appendTrace= False, **kwargs):
+    def critical(cls, message:str, exception:Exception=None, appendTrace:bool= False, **kwargs):
         cls.__genLog__(logMethod=cls.logger.critical, message=message, exception=exception, appendTrace= appendTrace, **kwargs)
 
     @classmethod
-    def __getStackTrace__(cls, exception=None):
+    def __getStackTrace__(cls, exception:Exception=None):
         if exception:
             stack_trace = traceback.format_exc()
         else:
