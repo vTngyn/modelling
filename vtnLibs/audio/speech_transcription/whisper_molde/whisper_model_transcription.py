@@ -63,6 +63,7 @@ class WhisperModelTranscription(TMON):
         # self.debug(f"Speech transcription save to file: {self.rttm_file_path}")
 
     def process_files_in_folder(self, main_folder, include_subdirs=False, allowed_extensions=None):
+        errNbr=0
         fileList = ffU.parse_folder_with_subfolders(folder_to_parse=main_folder, include_subdirs=include_subdirs, allowed_extensions=allowed_extensions)
         self.startTimer()
         self.debug("================================================================================")
@@ -79,13 +80,21 @@ class WhisperModelTranscription(TMON):
             try:
                 self.process_audio_file(audio_input_folder=directory, audio_input_filename=audioFilename)
             except Exception as e:
+                errNbr+=1
                 self.error(f"An error occured on file {full_path}",exception=e)
 
             idx += 1
         self.stopTimer()
         self.show_total_processing_time()
+        return errNbr
+
+    def __get_audio_file_size_length__(self):
+        audio_length = AudFU.get_audio_length_ffmpeg(self.audio_file_path)
+        filesize = ffU.get_file_size(self.audio_file_path)
+        return filesize, audio_length
 
     def process_audio_file(self, audio_input_folder: str, audio_input_filename: str, output_file_ext: str="txt"):
+        errNbr = 0
         self.audio_input_folder = audio_input_folder
         self.audio_input_filename = audio_input_filename
         self.setup_file_path_variables()
@@ -111,6 +120,10 @@ class WhisperModelTranscription(TMON):
                     "| ==================================================================================================================================\n")
                 file.write("NFO:")
                 file.write("\t - audio file = '%s' \n" % (abs_path_input_file))
+                filesize, audio_length = self.__get_audio_file_size_length__()
+                file.write(f"\t Audio length: \t {audio_length}\n")
+                file.write(f"\t Audio size: \t {filesize}\n")
+                file.write(f"\t transcription model: \t WhisperModel(model_size={self.model_size}, device={self.modelDevice}, compute_type={self.modelComputeType})\n")
                 file.write(
                     "\t - Detected language '%s' with probability %f \n" % (info.language, info.language_probability))
                 file.write(
@@ -126,11 +139,14 @@ class WhisperModelTranscription(TMON):
                 print(f"Segment {idx}: tokenize completed => {elapsed_segment_time:.2f}s: {segment_transcription}")
                 idx += 1
         except Exception as e:
+
+            errNbr += 1
             self.error("an error occured", exception=e)
             print(e)
             traceback.print_exc()
 
         self.show_elapsed_time_since_intermediate_timer()
+        return errNbr
 
     def process_audio_segment(self, segment, transcription_file):
         start_time = time.time()  # Start timer

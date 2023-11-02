@@ -44,7 +44,7 @@ class StringUtils():
 
 
 
-    def substitute_characters_regex(input_string, char_mappings=None):
+    def substitute_characters_regex(input_string, char_mappings=None) -> str:
         if not char_mappings:
             char_mappings=StringUtils.char_mappings
         # Create a regex pattern for matching characters to be substituted

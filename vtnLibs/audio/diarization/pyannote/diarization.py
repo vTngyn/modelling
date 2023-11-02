@@ -1,6 +1,7 @@
 from pyannote.audio import Pipeline
 # from pyannote.audio import Diarization
 from pyannote.audio.pipelines.utils.hook import ProgressHook
+from vtnLibs.AudioFileUtils import AudioFileUtils as AudFU
 from . import ffU
 from . import LEC
 from . import dtU
@@ -15,12 +16,17 @@ import re
 
 class SpeakerDiarization(TMON):
     default_reprocess_file = False
-    def __init__(self, output_root_folder: str, saveToFile: bool = True, load_audio_in_memory: bool = False, sad_model=None, overlap_function = True):
+    default_diarization_model_name = "pyannote/speaker-diarization-3.0"
+
+    def __init__(self, output_root_folder: str, saveToFile: bool = True, load_audio_in_memory: bool = False, sad_model=None, overlap_function = True, diarization_model_name = default_diarization_model_name):
+
         self.pipeline = None
         self.diarization = None
         self.pipeline = None
         self.overlap_function = overlap_function
         self.sad_model = sad_model
+
+        self.diarization_model_name = diarization_model_name
 
         self.load_audio_in_memory = load_audio_in_memory
 
@@ -52,7 +58,7 @@ class SpeakerDiarization(TMON):
         self.debug(f"Spk Diarization save to file: {self.rttm_file_path}")
 
     def initializePipeline(self) -> None:
-        self.pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.0", use_auth_token="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")
+        self.pipeline = Pipeline.from_pretrained(self.diarization_model_name, use_auth_token="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")
 
         #Processing on GPU
         #pipeline.to(torch.device("cuda"))
@@ -120,10 +126,28 @@ class SpeakerDiarization(TMON):
         self.show_elapsed_time_since_intermediate_timer()
 
         return self.diarization
+
+    def __get_audio_file_size_length__(self):
+        audio_length = AudFU.get_audio_length_ffmpeg(self.audio_file_path)
+        filesize = ffU.get_file_size(self.audio_file_path)
+        return filesize, audio_length
+
     def saveRTTMFile(self):
         # with open("../../out/audio/2023_08_04_16_01_48_us622545Dierick/resampled_audio.rttm", "w") as rttm:
         with open(self.rttm_file_path, "w") as rttm:
             self.diarization.write_rttm(rttm)
+            rttm.write(
+                "| ==================================================================================================================================\n")
+            rttm.write("NFO:")
+            rttm.write(f"\t Audio file: \t {self.audio_input_filename}")
+            filesize, audio_length = self.__get_audio_file_size_length__()
+            rttm.write(f"\t Audio length: \t {audio_length}")
+            rttm.write(f"\t Audio size: \t {filesize}")
+            rttm.write(f"\t RTTM file: \t {self.rttm_file_path}")
+            rttm.write(f"\t RTTM model: \t {self.diarization_model_name}")
+            rttm.write(
+                "| ==================================================================================================================================\n")
+
 
     @staticmethod
     def extract_parameters_for_number_of_speakers_from_filename(base_file_name: str) -> dict:
