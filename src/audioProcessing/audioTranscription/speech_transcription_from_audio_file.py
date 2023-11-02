@@ -20,6 +20,7 @@ def run_audio_file_transcription_job(project_base_folder_path
                                      , allowed_extensions=[AudioFileUtils.FFMPEG_FORMAT_M4A]
 
                            ):
+    errNbr=0
     try:
             # pathLevelFromParentProjectFolder = ffU.get_relative_file_path_from_script_folder("",script_folder_deep=3)
 
@@ -42,9 +43,9 @@ def run_audio_file_transcription_job(project_base_folder_path
 
             module = WhisperModelTranscription(output_root_folder=output_folder, modelDevice=WhisperModelTranscription.MODEL_DEVICE_CPU)
             if audio_filename:
-                module.process_audio_file(audio_input_folder=audio_files_folder, audio_input_filename=audio_filename)
+                errNbr=module.process_audio_file(audio_input_folder=audio_files_folder, audio_input_filename=audio_filename)
             else:
-                module.process_files_in_folder(main_folder=audio_files_folder, include_subdirs=False, allowed_extensions=allowed_extensions)
+                errNbr=module.process_files_in_folder(main_folder=audio_files_folder, include_subdirs=False, allowed_extensions=allowed_extensions)
             return None
     except Exception as e:
         raise e

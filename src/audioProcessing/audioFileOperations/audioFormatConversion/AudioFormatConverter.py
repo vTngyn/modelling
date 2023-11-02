@@ -1,3 +1,4 @@
+import logging
 import subprocess
 
 import vtnLibs.common_utils.LogUtils
@@ -122,6 +123,7 @@ def run_audio_conversion_job(project_base_folder_path
                              , output_folder_relative_folder_path = "out/audio/convertedAudio"
                              ,output_format = AudioFormatConverter.default_output_format
                              ):
+    errNbr = 0
     vtnLibs.common_utils.LogUtils.configLogOutput()
 
     # # output_format = AudioFormatConverter.FFMPEG_FORMAT_WAV
@@ -137,12 +139,13 @@ def run_audio_conversion_job(project_base_folder_path
     try:
         module = AudioFormatConverter(output_folder)
         if audio_filename:
-            module.convert_audio_file(audio_files_folder, audio_filename, output_format, quiet_mode=False)
+            errNbr=module.convert_audio_file(audio_files_folder, audio_filename, output_format, quiet_mode=False)
         else:
-            module.convert_files_in_folder(main_folder=audio_files_folder, output_format=output_format)
+            errNbr=module.convert_files_in_folder(main_folder=audio_files_folder, output_format=output_format)
         return None
     except Exception as e:
         # return e
-        raise e
+        # raise e
+        logging.exception()
 if __name__ == "__main__":
     pass

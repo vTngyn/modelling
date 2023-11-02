@@ -5,7 +5,6 @@ import sounddevice as sd  # Import sounddevice for audio device management
 from vtnLibs.AudioUtils import AudioUtils as AudioU
 import pprint
 import time
-from common_classes import SegmentData
 from vtnLibs.AudioDeviceUtils import EmbeddedAudioSelector
 from vtnLibs.AudioDeviceUtils import DeviceLabelModel
 from vtnLibs.common_utils.LogUtils import LogEnabledClass as LEC

@@ -1,4 +1,3 @@
-from ..common_classes import SegmentData
 from vtnLibs.AudioDeviceUtils import EmbeddedAudioSelector, DeviceLabelModel
 from typing import List
 

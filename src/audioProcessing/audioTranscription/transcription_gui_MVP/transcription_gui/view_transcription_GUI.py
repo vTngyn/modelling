@@ -4,14 +4,20 @@ from tkinter import filedialog
 from tkinter import ttk
 import re
 from threading import Thread
-from play_segment_GUI import AudioSegmentPlayerGUI
-from select_audio_device_GUI import AudioSelectionGUI
-from common_classes import TranscriptSegmentData, SpeechSpeaker
+from src.audioProcessing.audioTranscription.transcription_gui_MVP.segment_player_gui.play_segment_GUI import AudioSegmentPlayerGUI
+
+from src.audioProcessing.audioTranscription.transcription_gui_MVP.audio_selector_gui.view_select_audio_device import AudioSelectionView
+from src.audioProcessing.audioTranscription.transcription_gui_MVP.audio_selector_gui.pres_select_audio_device import AudioSelectionPresenter
+from src.audioProcessing.audioTranscription.transcription_gui_MVP.audio_selector_gui.model_select_audio_device import AudioSelectionModel
+
+from src.audioProcessing.audioTranscription.transcription_gui_MVP.common_classes import SpeechSpeaker
+from src.audioProcessing.audioTranscription.transcription_gui_MVP.transcription_gui.transcription_module import \
+    TranscriptSegmentData
 from vtnLibs.common_utils.LogUtils import LogEnabledClass as LEC
 from vtnLibs.common_utils.FileFolderOperationsUtils import FileFOlderOpsUtils as ffU
 from vtnLibs.AudioDeviceUtils import EmbeddedAudioSelector
 import time
-from typing import List, Protocol
+from typing import List
 
 """
 from tkinter import messagebox
@@ -19,7 +25,6 @@ import sounddevice as sd  # Import sounddevice for audio device management
 from vtnLibs.AudioUtils import AudioUtils as AudioU
 import pprint
 """
-
 
 
 class ViewTranscriptionApp(LEC):
@@ -240,18 +245,19 @@ class ViewTranscriptionApp(LEC):
         # self.text_area.pack(padx=10, pady=10)
 
         if self.selected_file_content:
+            last_diarization_idx_line=0
             # Split the content into lines and insert each line as a separate item
             lines = self.selected_file_content.split('\n')
             for i, line in enumerate(lines):
                 if (i >= self.header_lines_number):
                     if line and len(line)>0:
-                        segData, last_diarization_idx_line = (self.audio_file_path)
+                        # segData, last_diarization_idx_line = (self.audio_file_path)
                         self.selected_segment_info, last_diarization_idx_line = self.get_segmentdata_from_transcrip_line(
                             audio_file_path=self.audio_file_path,
-                            transcription_line=line, find_speakers_in_diariz_file=True, last_diarization_idx_line=last_diarization_idx_line)
+                            transcription_line=line, find_speakers_in_diariz_file=False, last_diarization_idx_line=last_diarization_idx_line)
 
-                        print(segData.to_string())
-                        self.insert_textarea_line(i, segData.pretty_transcription_line())
+                        print(self.selected_segment_info.to_string())
+                        self.insert_textarea_line(i, self.selected_segment_info.pretty_transcription_line())
                 else:
                     if audio_file_not_found:
                         if (self.extract_audio_file_info(line)):
@@ -308,9 +314,9 @@ class ViewTranscriptionApp(LEC):
 
     def get_segmentdata_from_transcrip_line(self, audio_file_path, transcription_line, find_speakers_in_diariz_file = False, last_diarization_idx_line=None) -> tuple[TranscriptSegmentData, int]:
         segData = TranscriptSegmentData(audio_file_path)
-        segData.initialize_from_transcription_line(transcription_line)
+        segData.initialize_from_raw_text_line(transcription_line)
         new_diarization_idx_line=None
-        if find_speakers_in_diariz_file:
+        if find_speakers_ in_diariz_file:
             speakers:List[SpeechSpeaker] = None
             speakers,  new_diarization_idx_line = self.find_speakers_in_diarizationRTTM(segData=segData, last_diarization_idx_line=last_diarization_idx_line)
             segData.add_speakers(speakers=speakers)
@@ -324,7 +330,7 @@ class ViewTranscriptionApp(LEC):
 
 
         # start_timestamp, end_timestamp, transcription_text = self.parse_transcription_line(self.selected_transcription_line_content)
-        # self.selected_segment_info = TranscriptSegmentData(audio_file=self.audio_file_path, start_timestamp=start_timestamp, end_timestamp=end_timestamp, text=transcription_text)
+        # self.selected_segment_info = SegmentData(audio_file=self.audio_file_path, start_timestamp=start_timestamp, end_timestamp=end_timestamp, text=transcription_text)
         # trans_text = self.selected_segment_info.to_string1()
         # d=self.selected_segment_info
         # trans_text = s = f"Segment:\n start at: {d.start_timestamp or '':.2f}\n End at: {d.end_timestamp or '':.2f}\n text: {d.text or ''}\n"
@@ -348,9 +354,14 @@ class ViewTranscriptionApp(LEC):
         print("run_audio_gui")
         # new_audio_GUI_root = tk.Tk()
         audio_select_GUI_root = tk.Toplevel(self.root)
-        audio_select_gui = AudioSelectionGUI(root= audio_select_GUI_root, on_gui_close=self.select_audio_devices_gui_closed_callback, audio_selector=self.audio_selector)
+        model = AudioSelectionModel(audio_selector=self.audio_selector)
+        view = AudioSelectionView(root= audio_select_GUI_root, audio_selector=self.audio_selector)
+        audio_selection_presenter=AudioSelectionPresenter(view=view, model=model, on_gui_close_callback=self.select_audio_devices_gui_closed_callback)
+        # audio_select_gui = AudioSelectionGUI(root= audio_select_GUI_root, on_gui_close=self.select_audio_devices_gui_closed_callback, audio_selector=self.audio_selector)
         # audio_player_gui.update_audio_gui()
-        return audio_select_GUI_root, audio_select_gui
+        audio_selection_presenter.run()
+
+        return audio_select_GUI_root, audio_selection_presenter
 
     def show_audio_player_gui(self):
         print("show_audio_player_gui")
@@ -370,12 +381,12 @@ class ViewTranscriptionApp(LEC):
         print("show_select_audio_device_gui")
 
         # Create an instance of the AudioPlayerGUI class and pass the segment data
-        audio_select_GUI_root, audio_select_gui=self.run_audio_selection_gui()
+        audio_select_GUI_root, audio_selection_presenter=self.run_audio_selection_gui()
         #audio_player_gui =None
         #Tkinker is not multithread safe
         #gui_thread = self.start_audio_gui_thread(audio_player_gui)
-        gui_selct_thread = None
-        self.audio_select_gui_list=(audio_select_gui, gui_selct_thread)
+        gui_select_thread = None
+        self.audio_select_gui_list=(audio_selection_presenter, gui_select_thread)
         #new_audio_GUI_root.mainloop()
 
 
@@ -499,55 +510,3 @@ class ViewTranscriptionApp(LEC):
             return True
         return False
 
-    def find_speakers_in_diarizationRTTM(self, segData: TranscriptSegmentData, last_diarization_idx_line=None) -> int:
-
-        if not self.diariz_file_lines:
-
-            # Read content from the second file
-            with open(self.diarization_file_path, 'r') as diariz_file:
-                diariz_file_lines = diariz_file.readlines()
-
-        # Create an output file to store the results
-        # output_file = open('output.txt', 'w')
-        start_idx=0
-        if last_diarization_idx_line and last_diarization_idx_line<len(self.diariz_file_lines):
-            x_lines_before_last_idx = last_diarization_idx_line - 3
-            if (x_lines_before_last_idx > 0):
-                start_idx = x_lines_before_last_idx
-            else:
-                start_idx=last_diarization_idx_line
-
-
-        # Extract timestamps and corresponding "SPEAKER_{XX}" strings from diariz file
-        timestamps_and_speakers = []
-        speakers=[]
-        i=start_idx
-        for line in self.diariz_file_lines[start_idx:]:
-            found_match = False
-            match = re.search(r'SPEAKER\swaveform\s1\s([0-9]{1,}\.[0-9]{1,})\s([0-9]{1,}\.[0-9]{1,})\s<NA>\s<NA>\s(SPEAKER_)(\d+)\s', line)
-            if match:
-                diariz_start_time, param2, speaker, speaker_idx = match.groups()
-                timestamps_and_speakers.append((float(diariz_start_time), float(param2), speaker, speaker_idx))
-                if segData.end_timestamp >= diariz_start_time:
-                    # Check if start_time2 falls within the range of the current line in file1
-                    if segData.start_timestamp <= diariz_start_time :
-                    #     output_file.write(f"Line in file1: [{diariz_start_time}s -> {param2}s] {speaker}\n")
-                    #     output_file.write(f"Matching line in file2: {line2}\n")
-                    #     output_file.write('\n')  # Add a separator between matches
-                        speakers.append(SpeechSpeaker(first_name=speaker_idx, last_name=speaker))
-                        self.debug(f"speaker found:[{diariz_start_time}s in {segData.start_timestamp}s -> {segData.end_timestamp}\n")
-
-                        found_match = True
-                    else:
-                        if found_match:
-                            break  # Move to the next line in file1
-            i += 1
-
-        last_processed_line_index = i
-        return speakers, last_processed_line_index
-
-        # Close the output file
-        # output_file.close()
-
-        # Close the input files
-        # diariz_file.close()

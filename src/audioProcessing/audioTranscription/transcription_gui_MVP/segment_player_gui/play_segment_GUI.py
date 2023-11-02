@@ -5,18 +5,20 @@ import sounddevice as sd  # Import sounddevice for audio device management
 from vtnLibs.AudioUtils import AudioUtils as AudioU
 import pprint
 import time
+from common_classes import SegmentData
 from vtnLibs.common_utils.LogUtils import LogEnabledClass as LEC
 from vtnLibs.AudioDeviceUtils import EmbeddedAudioSelector
 from vtnLibs.AudioDeviceUtils import DeviceLabelModel
 import numpy as np
 import threading
 
-class RT_VAD_DetectionGUI(LEC):
+class AudioSegmentPlayerGUI(LEC):
 
 
-    def __init__(self, root, on_gui_close, audio_selector: EmbeddedAudioSelector):
+    def __init__(self, root, on_gui_close, audio_selector: EmbeddedAudioSelector, selected_segment_info):
         self.audio_segment = None
         self.on_gui_close = on_gui_close
+        self.selected_segment_info=selected_segment_info
         self.playback_position = None
 
         self.audio_selector=audio_selector

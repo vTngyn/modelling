@@ -17,7 +17,7 @@ class SpeechSpeaker:
             print(e)
         return None
 
-class SegmentData:
+class TranscriptSegmentData:
     def __init__(self, audio_file: str):
         self.start_timestamp = None
         self.end_timestamp = None
@@ -26,7 +26,7 @@ class SegmentData:
         self.speakers: List = []
 
     def initialize_from_transcription_line(self, transcription_line):
-        self.start_timestamp, self.end_timestamp, self.text = SegmentData.parse_transcription_line(transcription_line)
+        self.start_timestamp, self.end_timestamp, self.text = TranscriptSegmentData.parse_transcription_line(transcription_line)
 
 
     def initialize_with_splitted_elements(self, start_timestamp, end_timestamp, text: str):
